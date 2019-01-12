@@ -82,7 +82,7 @@ class KMeans:
 
     # returns an array "a" such that a[k] is the score for the dataset with k clusters, higher score is a better clustering job
     @staticmethod
-    def recommend_k_clusters(dataset, max_clusters):
+    def recommend_k_clusters_gap(dataset, max_clusters=10):
         # calculates how compact a cluster is, lower number is more compact
         def compactness(model):
             clusters = {}
@@ -98,7 +98,7 @@ class KMeans:
                 total_compactedness += pairwise_distances/(2 * len(cluster))
             return total_compactedness
         # creates uniform random data with the same bounding box as the dataset
-        def __bounding_box(dataset):
+        def bounding_box(dataset):
             X = dataset
             dimensions = len(X[0])
             mins = []
@@ -116,26 +116,60 @@ class KMeans:
                         randomly_placed_vector.append(random.uniform(mins[k], maxs[k]))
                     uniform_data.append(randomly_placed_vector)
             return uniform_data
-        score = []
-        score.insert(0, -100)
-        score.insert(1, -100)
+        scores = []
+        scores.insert(0, -100)
+        scores.insert(1, -100)
         for n in range(2, max_clusters+1):
             model = KMeans(k_clusters=n)
             model.fit(dataset)
             reference_model_compactness = 0
-            B = 100 # possibly allow users to change this value
+            B = 10 # possibly allow users to change this value
             # get average compactness of
             for i in range(1, B):
                 reference_model = KMeans(k_clusters=n)
-                reference_model.fit(__bounding_box(dataset))
+                reference_model.fit(bounding_box(dataset))
                 reference_model_compactness += compactness(reference_model)/B
             gap = math.log(reference_model_compactness) - math.log(compactness(model))
-            print(math.log(reference_model_compactness), ' vs ' , math.log(compactness(model)))
-            score.insert(n, gap)
-        return score
+            scores.insert(n, gap)
+        return scores
+
+    # returns an array "a" such that a[k] is the score for the dataset with k clusters, higher score is a better clustering job
+    @staticmethod
+    def recommend_k_clusters_silhouette(dataset, max_clusters = 10):
+        def compactness(model):
+            total_silhouette = 0
+            clusters = {}
+            for centroid in model.centroids:
+                clusters[centroid] = list(map(lambda x: x[0],list(filter(lambda x: x[1] == centroid, model.clustered_data))))
+            for datapoint in model.clustered_data:
+                centroid = model.centroids[datapoint[1]]
+                distance_to_centroid = np.linalg.norm(np.asarray(datapoint[0]) - np.asarray(centroid))
+                temp_centroids = list(map(lambda x: model.centroids[x], model.centroids))
+                temp_centroids.remove(centroid)
+                distance_to_neighbor = float("inf")
+                # find shortest distance to next nearest centroid
+                for center in temp_centroids:
+                    distance_to_neighbor = min(distance_to_neighbor, np.linalg.norm(np.asarray(datapoint[0]) - np.asarray(center)))
+                total_silhouette += (distance_to_centroid - distance_to_neighbor)/max(distance_to_centroid,distance_to_neighbor)
+            return total_silhouette/len(model.clustered_data)
+        scores = []
+        scores.insert(0, -100)
+        scores.insert(1, -100)
+        for k in range(2, max_clusters+1):
+            model = KMeans(k_clusters=k)
+            model.fit(dataset)
+            scores.insert(k, compactness(model))
+        return scores
 
     # returns an integer k representing the optimal amount of k_clusters for the dataset
     @staticmethod
-    def optimal_k(dataset, max_clusters):
-        clustering_scores = KMeans.recommend_k_clusters(dataset, max_clusters)
-        return clustering_scores.index(max(clustering_scores))
+    def optimal_k(dataset, max_clusters=10, algorithm="gap"):
+        if algorithm == "gap":
+            clustering_scores = KMeans.recommend_k_clusters_gap(dataset, max_clusters)
+            return clustering_scores.index(max(clustering_scores))
+        elif algorithm == "silhouette":
+            clustering_scores = KMeans.recommend_k_clusters_silhouette(dataset, max_clusters)
+            return clustering_scores.index(max(clustering_scores))
+        else:
+            clustering_scores = KMeans.recommend_k_clusters_gap(dataset, max_clusters)
+            return clustering_scores.index(max(clustering_scores))

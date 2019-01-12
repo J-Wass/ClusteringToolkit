@@ -12,11 +12,12 @@ cluster2 = list(map(lambda x: x+300,gen_sample_data((200,50), 10)))
 cluster3 = list(map(lambda x: x+600,gen_sample_data((100,150), 10)))
 cluster4 = list(map(lambda x: x+900,gen_sample_data((200,100), 10)))
 data = np.asarray(cluster1+cluster2+cluster3+cluster4)
-
-k = KMeans.optimal_k(data.tolist(), 8)
+k = KMeans.optimal_k(dataset=data.tolist(), max_clusters=8, algorithm="silhouette")
+print('recommended clusters (silhouette): ' , k)
+k = KMeans.optimal_k(dataset=data.tolist(), max_clusters=8, algorithm="gap")
+print('recommended clusters (gap): ' , k)
 model = KMeans(k_clusters = k)
 labels = model.fit(data.tolist())
-print('recommended clusters: ' , k)
 labelled_data = list(zip(data, labels))
 colors = ["red", "blue", "green", "yellow", "orange", "cyan", "black", "magenta", "#1abc9c", " #abb2b9"]
 for i in range (0,k):
