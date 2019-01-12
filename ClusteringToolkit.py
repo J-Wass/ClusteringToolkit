@@ -84,7 +84,7 @@ class KMeans:
     @staticmethod
     def recommend_k_clusters(dataset, max_clusters):
         # calculates how compact a cluster is, lower number is more compact
-        def compactedness(model):
+        def compactness(model):
             clusters = {}
             for centroid in model.centroids:
                 clusters[centroid] = list(map(lambda x: x[0],list(filter(lambda x: x[1] == centroid, model.clustered_data))))
@@ -122,9 +122,15 @@ class KMeans:
         for n in range(2, max_clusters+1):
             model = KMeans(k_clusters=n)
             model.fit(dataset)
-            reference_model = KMeans(k_clusters=n)
-            reference_model.fit(__bounding_box(dataset))
-            gap = math.log(compactedness(reference_model)) - math.log(compactedness(model))
+            reference_model_compactness = 0
+            B = 100 # possibly allow users to change this value
+            # get average compactness of
+            for i in range(1, B):
+                reference_model = KMeans(k_clusters=n)
+                reference_model.fit(__bounding_box(dataset))
+                reference_model_compactness += compactness(reference_model)/B
+            gap = math.log(reference_model_compactness) - math.log(compactness(model))
+            print(math.log(reference_model_compactness), ' vs ' , math.log(compactness(model)))
             score.insert(n, gap)
         return score
 
